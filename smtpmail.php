@@ -9,7 +9,7 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20230201';
+$RecipeInfo['SMTPMail']['Version'] = '20230224';
 SDV($MailFunction, "MailSMTP");
 
 SDVA($SMTPMail, array(
@@ -70,8 +70,6 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   $headers .= "Subject: $subject\r\n";
   $headers .= "Date: $date\r\n";
   $headers .= "Message-ID: <$mid>\r\n";
-  
-// Message-ID: <824877941.4309796.1673468410433@www.ud-mail.de>
 
   $envelope = trim($headers) . "\r\n\r\n" . ltrim($message, "\r\n");
   
