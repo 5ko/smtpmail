@@ -56,8 +56,7 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   if(preg_match('/<(\\S+@\\S+)>/', $from, $m)) $mailfrom = $m[1];
   else $mailfrom = $from;
   
-  $message = str_replace("\r", "", $message);
-  $message = str_replace("\n", "\r\n", $message);
+
   $message = wordwrap($message, $SMTPMail['wordwrap'], "\r\n");
   
   $headers = trim($headers);
@@ -72,6 +71,10 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   $headers .= "Message-ID: <$mid>\r\n";
 
   $envelope = trim($headers) . "\r\n\r\n" . ltrim($message, "\r\n");
+  
+  
+  $envelope = str_replace("\r", "", $envelope);
+  $envelope = str_replace("\n", "\r\n", $envelope);
   
   $temp = tempnam($WorkDir,"mail");
   if ($fp = fopen($temp,"w")) {
@@ -93,5 +96,76 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   
   if(preg_match('/We are completely uploaded and fine/i', $ret)) return true;
   return false;
+}
+
+# This helper function combines a multuipart message with plain text,
+# wiki markup (converted to html), html, embedded pictures and attached files.
+# It returns the combined message and an additional multipart/mixed header.
+function MultipartMailSMTP($a, $pn=null) {
+  global $UploadExts;
+  $message = '';
+  global $pagename, $LinkFunctions, $LinkPattern, $IMap;
+  if(is_null($pn)) $pn = $pagename;
+  
+  $LinkFunctions['cid:'] = 'LinkIMap';
+  $IMap['cid:']="cid:$1";
+  $LinkPattern .= "|cid:";
+  
+  $boundary = "MULTIPART-MIXED-BOUNDARY";
+  
+  foreach($a as $k=>$v) {
+    $j = 'text'; $content = $v; $fname = $cte = $cid = '';
+    
+    if(preg_match('/^(cid|file|markup|html|content):(.*)$/s', $v, $m)) {
+      $j = $m[1]; $content = $m[2];
+    }
+    if($j=='content') { # array key is filename
+      $fname = $k;
+    }
+    elseif($j=='cid'||$j=='file') {
+      $fname = preg_replace('!^.*/!s', '', $m[2]);
+      $content = file_get_contents($m[2]);
+    }
+    elseif($j=='markup') {
+      $content = MarkupToHTML($pn, $content);
+    }
+    
+    if($j=='text') {
+      $ct = 'text/plain; charset=utf-8';
+    }
+    elseif($j=='markup'||$j=='html') {
+      $ct = 'text/html; charset=utf-8';
+      $content = "<!doctype html><html><head><meta charset=\"utf-8\">
+<style>.vspace{margin-top:1.5rem;}</style></head><body>$content</body></html> ";
+    }
+    else {
+      $ext = strtolower(preg_replace('!^.*\\.!', '', $fname));
+      if(isset($UploadExts[$ext])) $ct = $UploadExts[$ext];
+      else $ct = 'application/octet-stream';
+    }
+    
+    $message .= "--$boundary\n";
+    $message .= "Content-Type: $ct\n";
+    if($j=='cid') {
+      $message .= "Content-Id: <$fname>\n";
+    }
+    
+    if($j=='cid'||$j=='markup'||$j=='text'||$j=='html') {
+      $cd = 'inline';
+    }
+    else $cd = "attachment; filename=\"$fname\"";
+    
+    $message .= "Content-Disposition: $cd\n";
+    
+    if($j!='text') {
+      $content = chunk_split(base64_encode($content));
+      $message .= "Content-Transfer-Encoding: base64\n";
+    }
+    
+    $message .= "\n$content\n";
+  }
+  
+  $header = "Content-Type: multipart/mixed; boundary=\"$boundary\"";
+  return [$message, $header];
 }
 
