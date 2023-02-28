@@ -1,6 +1,6 @@
 <?php if (!defined('PmWiki')) exit();
 /* 
-  Send mail with Curl via SMTP for PmWiki (module version)
+  Send mail with Curl via SMTP for PmWiki
   Copyright 2018-2023 Petko Yotov pmwiki.org/petko
   
   This file is free Software, you can redistribute it and/or modify
@@ -9,7 +9,7 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20230224';
+$RecipeInfo['SMTPMail']['Version'] = '20230225';
 SDV($MailFunction, "MailSMTP");
 
 SDVA($SMTPMail, array(
@@ -114,7 +114,7 @@ function MultipartMailSMTP($a, $pn=null) {
   $boundary = "MULTIPART-MIXED-BOUNDARY";
   
   foreach($a as $k=>$v) {
-    $j = 'text'; $content = $v; $fname = $cte = $cid = '';
+    $j = 'text'; $content = $v; $fname = $cte = $cid = $ct = '';
     
     if(preg_match('/^(cid|file|markup|html|content):(.*)$/s', $v, $m)) {
       $j = $m[1]; $content = $m[2];
@@ -143,17 +143,21 @@ function MultipartMailSMTP($a, $pn=null) {
       if(isset($UploadExts[$ext])) $ct = $UploadExts[$ext];
       else $ct = 'application/octet-stream';
     }
+    if($fname) $ct .= "; name=\"$fname\"";
     
     $message .= "--$boundary\n";
     $message .= "Content-Type: $ct\n";
     if($j=='cid') {
-      $message .= "Content-Id: <$fname>\n";
+      $message .= "Content-ID: <$fname>\n";
+      $message .= "X-Attachment-Id: $fname\n";
     }
-    
-    if($j=='cid'||$j=='markup'||$j=='text'||$j=='html') {
+       
+    if($j=='cid'||$j=='markup'||$j=='text'||$j=='html') { #
       $cd = 'inline';
     }
-    else $cd = "attachment; filename=\"$fname\"";
+    else $cd = "attachment";
+    
+    if($fname) $cd .= "; filename=\"$fname\"";
     
     $message .= "Content-Disposition: $cd\n";
     
