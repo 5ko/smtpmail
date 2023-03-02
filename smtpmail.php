@@ -9,7 +9,7 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20230225';
+$RecipeInfo['SMTPMail']['Version'] = '20230302';
 SDV($MailFunction, "MailSMTP");
 
 SDVA($SMTPMail, array(
@@ -44,7 +44,6 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   if(preg_match('/^Bcc: *(\\S.*)$/mi', $headers, $m)) {
     $rcpt .= ",$m[1]";
     $headers = preg_replace("/^Bcc: .*$/mi", '', $headers);
-    $headers = str_replace("\r\n\r\n", "\r\n", $headers);
   }
   
   $mailto = array();
@@ -57,25 +56,27 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   else $mailfrom = $from;
   
 
-  $message = wordwrap($message, $SMTPMail['wordwrap'], "\r\n");
+  $message = wordwrap($message, $SMTPMail['wordwrap'], "\n");
   
   $headers = trim($headers);
-  if($headers) $headers .= "\r\n";
+  if($headers) $headers .= "\n";
   $date = date('r');
   $mid = mt_rand(100000, 999999) . ".$Now.$mailfrom";
   
-  if(!preg_match('/^From:/m', $headers)) $headers .= "From: $from\r\n";
-  $headers .= "To: $to\r\n";
-  $headers .= "Subject: $subject\r\n";
-  $headers .= "Date: $date\r\n";
-  $headers .= "Message-ID: <$mid>\r\n";
+  if(!preg_match('/^From:/m', $headers)) $headers .= "From: $from\n";
+  $headers .= "To: $to\n";
+  $headers .= "Subject: $subject\n";
+  $headers .= "Date: $date\n";
+  $headers .= "Message-ID: <$mid>\n";
 
-  $envelope = trim($headers) . "\r\n\r\n" . ltrim($message, "\r\n");
+  $headers = str_replace("\n\n", "\n", $headers);
+  
+  $envelope = trim($headers) . "\n\n" . ltrim($message, "\n");
   
   
   $envelope = str_replace("\r", "", $envelope);
   $envelope = str_replace("\n", "\r\n", $envelope);
-  
+    
   $temp = tempnam($WorkDir,"mail");
   if ($fp = fopen($temp,"w")) {
     fputs($fp,$envelope);
@@ -161,7 +162,7 @@ function MultipartMailSMTP($a, $pn=null) {
     
     $message .= "Content-Disposition: $cd\n";
     
-    if($j!='text') {
+    if($j!='text' && $j!='markup' && $j!='html') {
       $content = chunk_split(base64_encode($content));
       $message .= "Content-Transfer-Encoding: base64\n";
     }
