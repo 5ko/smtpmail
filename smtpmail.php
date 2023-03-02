@@ -51,14 +51,15 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   foreach($tos as $e) if($e) $mailto[$e] = " --mail-rcpt " . escapeshellarg($e);
   $mailto = implode(' ', $mailto);
   
-  $subject = preg_replace('/\\s+/', ' ', $subject);
+  $subject = trim(preg_replace('/\\s+/', ' ', $subject));
   if(preg_match('/<(\\S+@\\S+)>/', $from, $m)) $mailfrom = $m[1];
   else $mailfrom = $from;
   
-
+  $message = str_replace("\r", '', $message);
   $message = wordwrap($message, $SMTPMail['wordwrap'], "\n");
+
   
-  $headers = trim($headers);
+  $headers = trim(str_replace("\r", '', $headers));
   if($headers) $headers .= "\n";
   $date = date('r');
   $mid = mt_rand(100000, 999999) . ".$Now.$mailfrom";
@@ -69,12 +70,10 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   $headers .= "Date: $date\n";
   $headers .= "Message-ID: <$mid>\n";
 
-  $headers = str_replace("\n\n", "\n", $headers);
+  $headers = preg_replace("/\n\n+/", "\n", $headers);
   
   $envelope = trim($headers) . "\n\n" . ltrim($message, "\n");
   
-  
-  $envelope = str_replace("\r", "", $envelope);
   $envelope = str_replace("\n", "\r\n", $envelope);
     
   $temp = tempnam($WorkDir,"mail");
@@ -167,8 +166,10 @@ function MultipartMailSMTP($a, $pn=null) {
       $message .= "Content-Transfer-Encoding: base64\n";
     }
     
-    $message .= "\n$content\n";
+    $message .= "\n$content\n\n";
   }
+  
+  $message = str_replace("\n", "\r\n", $message);
   
   $header = "Content-Type: multipart/mixed; boundary=\"$boundary\"";
   return [$message, $header];
