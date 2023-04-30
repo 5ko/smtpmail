@@ -9,8 +9,12 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20230302';
+$RecipeInfo['SMTPMail']['Version'] = '20230430';
 SDV($MailFunction, "MailSMTP");
+
+SDVA($LinkFunctions, array('cid:'=>'LinkIMap'));
+SDVA($IMap, array('cid:'=>'cid:$1'));
+$LinkPattern .= "|cid:";
 
 SDVA($SMTPMail, array(
   'curl' => 'curl',
@@ -49,6 +53,9 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   $mailto = array();
   $tos = preg_split('/[,\\s]+/', $rcpt);
   foreach($tos as $e) if($e) $mailto[$e] = " --mail-rcpt " . escapeshellarg($e);
+  if(isset($CountFunction)) {
+    $CountFunction(count($mailto));
+  }  
   $mailto = implode(' ', $mailto);
   
   $subject = trim(preg_replace('/\\s+/', ' ', $subject));
@@ -102,14 +109,13 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
 # wiki markup (converted to html), html, embedded pictures and attached files.
 # It returns the combined message and an additional multipart/mixed header.
 function MultipartMailSMTP($a, $pn=null) {
-  global $UploadExts;
-  $message = '';
-  global $pagename, $LinkFunctions, $LinkPattern, $IMap;
-  if(is_null($pn)) $pn = $pagename;
+  global $UploadExts, $pagename, $LinkFunctions, $LinkPattern, $IMap;
   
-  $LinkFunctions['cid:'] = 'LinkIMap';
-  $IMap['cid:']="cid:$1";
-  $LinkPattern .= "|cid:";
+  if(is_null($pn)) $pn = $pagename;
+  $message = '';
+  
+  $mf = $LinkFunctions['mailto:'];
+  $LinkFunctions['mailto:'] = 'LinkIMap';
   
   $boundary = "MULTIPART-MIXED-BOUNDARY";
   
@@ -136,7 +142,8 @@ function MultipartMailSMTP($a, $pn=null) {
     elseif($j=='markup'||$j=='html') {
       $ct = 'text/html; charset=utf-8';
       $content = "<!doctype html><html><head><meta charset=\"utf-8\">
-<style>.vspace{margin-top:1.5rem;}</style></head><body>$content</body></html> ";
+<style>.vspace{margin-top:1.5rem;} .indent{margin-left:40px;} .right{text-align:right;}</style>
+</head><body>$content</body></html> ";
     }
     else {
       $ext = strtolower(preg_replace('!^.*\\.!', '', $fname));
@@ -168,10 +175,13 @@ function MultipartMailSMTP($a, $pn=null) {
     
     $message .= "\n$content\n\n";
   }
+  $LinkFunctions['mailto:'] = $mf;
+  
   
   $message = str_replace("\n", "\r\n", $message);
-  
   $header = "Content-Type: multipart/mixed; boundary=\"$boundary\"";
+  
+  
   return [$message, $header];
 }
 
