@@ -1,2 +1,2 @@
 # smtpmail
-Send mail with Curl via SMTP for PmWiki (module version)
+Send mail with cURL via SMTP for PmWiki (module version)
