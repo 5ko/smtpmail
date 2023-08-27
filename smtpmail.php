@@ -9,7 +9,7 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20230430';
+$RecipeInfo['SMTPMail']['Version'] = '20230702';
 SDV($MailFunction, "MailSMTP");
 
 SDVA($LinkFunctions, array('cid:'=>'LinkIMap'));
@@ -61,6 +61,7 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   $subject = trim(preg_replace('/\\s+/', ' ', $subject));
   if(preg_match('/<(\\S+@\\S+)>/', $from, $m)) $mailfrom = $m[1];
   else $mailfrom = $from;
+  $efrom = escapeshellarg($mailfrom);
   
   $message = str_replace("\r", '', $message);
   $message = wordwrap($message, $SMTPMail['wordwrap'], "\n");
@@ -93,8 +94,8 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
     return false;
   }
   
-  if($userpass) $userpass = '-u '. escapeshellarg($userpass);
-  $command = "$curl $server -vv $userpass --mail-from \"$mailfrom\"  $mailto  -T $temp 2>&1 ";
+  if(@$userpass) $userpass = '-u '. escapeshellarg($userpass);
+  $command = "$curl $server -vv $userpass --mail-from $efrom  $mailto  -T $temp 2>&1 ";
   
   ob_start();
     passthru($command);
@@ -109,7 +110,7 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
 # wiki markup (converted to html), html, embedded pictures and attached files.
 # It returns the combined message and an additional multipart/mixed header.
 function MultipartMailSMTP($a, $pn=null) {
-  global $UploadExts, $pagename, $LinkFunctions, $LinkPattern, $IMap;
+  global $UploadExts, $pagename, $LinkFunctions, $LinkPattern, $IMap, $SMTPMailStylesFmt;
   
   if(is_null($pn)) $pn = $pagename;
   $message = '';
@@ -141,8 +142,17 @@ function MultipartMailSMTP($a, $pn=null) {
     }
     elseif($j=='markup'||$j=='html') {
       $ct = 'text/html; charset=utf-8';
+      
+      $styles = '';
+      if(is_string($SMTPMailStylesFmt)) {
+        $styles = $SMTPMailStylesFmt;
+      }
+      elseif(is_array($SMTPMailStylesFmt)) {
+        $styles = implode("\n", $SMTPMailStylesFmt);
+      }
+      
       $content = "<!doctype html><html><head><meta charset=\"utf-8\">
-<style>.vspace{margin-top:1.5rem;} .indent{margin-left:40px;} .right{text-align:right;}</style>
+<style>.vspace{margin-top:1.5rem;} .indent{margin-left:40px;} .right{text-align:right;}$styles</style>
 </head><body>$content</body></html> ";
     }
     else {
