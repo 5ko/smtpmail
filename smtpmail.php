@@ -99,7 +99,7 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   
   ob_start();
     passthru($command);
-  $FmtV['$CurlOutput'] = $ret = ob_get_clean();
+  $SMTPMail['curloutput'] = $ret = ob_get_clean();
   @unlink($temp);
   
   if(preg_match('/We are completely uploaded and fine/i', $ret)) return true;
