@@ -9,17 +9,17 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20230702';
+$RecipeInfo['SMTPMail']['Version'] = '20231002';
 SDV($MailFunction, "MailSMTP");
 
 SDVA($LinkFunctions, array('cid:'=>'LinkIMap'));
 SDVA($IMap, array('cid:'=>'cid:$1'));
-$LinkPattern .= "|cid:";
+if(isset($LinkPattern)) $LinkPattern .= "|cid:";
 
 SDVA($SMTPMail, array(
   'curl' => 'curl',
-  'server' => 'smtps://smtp.gmail.com:465 --ssl',
-  'options' => ' -k --anyauth',
+  'server' => 'smtps://smtp.gmail.com:465',
+  'options' => ' --ssl -k --anyauth',
   'from' => 'user@example.com',
   'userpass' => '',
   'bcc' => '',
@@ -90,7 +90,7 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
     fclose($fp);
   }
   else {
-//     Abort("Cannot create temp file.");
+    $SMTPMail['debug'] = "Cannot create temp file '$temp'.";
     return false;
   }
   
