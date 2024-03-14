@@ -1,7 +1,7 @@
 <?php if (!defined('PmWiki')) exit();
 /* 
   Send mail with Curl via SMTP for PmWiki
-  Copyright 2018-2023 Petko Yotov pmwiki.org/petko
+  Copyright 2018-2024 Petko Yotov pmwiki.org/petko
   
   This file is free Software, you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published
@@ -9,7 +9,7 @@
   (at your option) any later version.  
 */
 
-$RecipeInfo['SMTPMail']['Version'] = '20231002';
+$RecipeInfo['SMTPMail']['Version'] = '20240314';
 SDV($MailFunction, "MailSMTP");
 
 SDVA($LinkFunctions, array('cid:'=>'LinkIMap'));
@@ -56,7 +56,7 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
   if(isset($CountFunction)) {
     $CountFunction(count($mailto));
   }  
-  $mailto = implode(' ', $mailto);
+  $emailto = implode(' ', $mailto);
   
   $subject = trim(preg_replace('/\\s+/', ' ', $subject));
   if(preg_match('/<(\\S+@\\S+)>/', $from, $m)) $mailfrom = $m[1];
@@ -93,13 +93,27 @@ function MailSMTP($to, $subject='', $message='', $headers='') {
     $SMTPMail['debug'] = "Cannot create temp file '$temp'.";
     return false;
   }
+  $etemp = escapeshellarg($temp);
   
   if(@$userpass) $userpass = '-u '. escapeshellarg($userpass);
-  $command = "$curl $server -vv $userpass --mail-from $efrom  $mailto  -T $temp 2>&1 ";
+  $command = "$curl $server -vv $userpass --mail-from $efrom  $emailto --upload-file $etemp 2>&1 ";
   
   ob_start();
     passthru($command);
-  $SMTPMail['curloutput'] = $ret = ob_get_clean();
+  $FmtV['$CurlOutput'] = $ret = ob_get_clean();
+  
+  
+  if(@$x['imapsentfolder']) {
+    if(!isset($x['imapuserpass'])) $x['imapuserpass'] = $x['userpass'];
+    $iuserpass = '-u '. escapeshellarg($x['imapuserpass']);
+    $ifolder = escapeshellarg($x['imapsentfolder']);
+    
+    $icommand = "$curl $ifolder -vv $iuserpass --upload-file $etemp 2>&1 ";
+    ob_start();
+      passthru($icommand);
+    $FmtV['$CurlImapOutput'] = $iret = ob_get_clean();
+  }
+  
   @unlink($temp);
   
   if(preg_match('/We are completely uploaded and fine/i', $ret)) return true;
